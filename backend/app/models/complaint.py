@@ -1,7 +1,9 @@
 import enum
 import uuid
+from typing import TYPE_CHECKING
 from datetime import date, datetime
 
+from app.models.complaint_document import ComplaintDocument
 from sqlalchemy import (
     Boolean,
     Date,
@@ -13,7 +15,12 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.orm import Mapped, mapped_column
+
+if TYPE_CHECKING:
+    from app.models.complaint_correction import ComplaintCorrection
+    from app.models.complaint_document import ComplaintDocument
 
 from app.core.database import Base
 
@@ -180,4 +187,15 @@ class Complaint(Base):
         nullable=False,
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
+    )
+    documents: Mapped[list["ComplaintDocument"]] = relationship(
+        "ComplaintDocument",
+        back_populates="complaint",
+        cascade="all, delete-orphan",
+    )
+    corrections: Mapped[list["ComplaintCorrection"]] = relationship(
+        "ComplaintCorrection",
+        back_populates="complaint",
+        cascade="all, delete-orphan",
+        order_by="ComplaintCorrection.created_at",
     )

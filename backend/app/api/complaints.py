@@ -4,12 +4,15 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.schemas.complaint import (
-    ComplaintCreate,
-    ComplaintDeleteResponse,
-    ComplaintListResponse,
-    ComplaintResponse,
-    ComplaintUpdate,
+from app.services.complaint_service import (
+    apply_complaint_corrections,
+    create_complaint,
+    delete_complaint,
+    get_complaint_by_id,
+    get_complaint_by_number,
+    get_complaints,
+    get_missing_commit_fields,
+    update_complaint,
 )
 from app.services.complaint_service import (
     create_complaint,
@@ -19,13 +22,121 @@ from app.services.complaint_service import (
     get_complaints,
     update_complaint,
 )
+from app.models.complaint import ComplaintStatus
+from app.schemas.complaint_correction import (
+    ComplaintCommitResponse,
+    CorrectionHistoryListResponse,
+)
+from app.models.complaint_correction import ComplaintCorrection
+from sqlalchemy import select
 
 
 router = APIRouter(
     prefix="/complaints",
     tags=["Complaints"],
 )
+@router.patch(
+    "/{complaint_id}/manual-save",
+    response_model=ComplaintResponse,
+)
+def save_manual_form_changes(
+    complaint_id: UUID,
+    complaint_data: ComplaintManualSaveRequest,
+    db: Session = Depends(get_db),
+):
+    complaint = get_complaint_by_id(
+        db=db,
+        complaint_id=complaint_id,
+    )
 
+    field_updates = complaint_data.model_dump(
+        exclude_unset=True
+    )
+
+    return apply_complaint_corrections(
+        db=db,
+        complaint=complaint,
+        field_updates=field_updates,
+        source="manual",
+        user_message="Manual form update",
+    )
+@router.post(
+    "/{complaint_id}/commit",
+    response_model=ComplaintCommitResponse,
+)
+def commit_complaint_to_qms(
+    complaint_id: UUID,
+    db: Session = Depends(get_db),
+):
+    complaint = get_complaint_by_id(
+        db=db,
+        complaint_id=complaint_id,
+    )
+
+    if complaint.status == ComplaintStatus.COMMITTED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Complaint is already committed.",
+        )
+
+    missing_fields = get_missing_commit_fields(
+        complaint
+    )
+
+    if missing_fields:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "message": (
+                    "Complaint cannot be committed because "
+                    "required information is missing."
+                ),
+                "missing_fields": missing_fields,
+            },
+        )
+
+    complaint.status = ComplaintStatus.COMMITTED
+
+    db.add(complaint)
+    db.commit()
+    db.refresh(complaint)
+
+    return ComplaintCommitResponse(
+        success=True,
+        complaint_id=complaint.id,
+        complaint_number=complaint.complaint_number,
+        status=complaint.status.value,
+        message=(
+            f"Complaint {complaint.complaint_number} "
+            "was committed to the QMS ledger."
+        ),
+    )
+
+@router.patch(
+    "/{complaint_id}/manual-save",
+    response_model=ComplaintResponse,
+)
+def save_manual_form_changes(
+    complaint_id: UUID,
+    complaint_data: ComplaintManualSaveRequest,
+    db: Session = Depends(get_db),
+):
+    complaint = get_complaint_by_id(
+        db=db,
+        complaint_id=complaint_id,
+    )
+
+    field_updates = complaint_data.model_dump(
+        exclude_unset=True
+    )
+
+    return apply_complaint_corrections(
+        db=db,
+        complaint=complaint,
+        field_updates=field_updates,
+        source="manual",
+        user_message="Manual form update",
+    )
 
 @router.post(
     "",

@@ -33,6 +33,14 @@ class Settings(BaseSettings):
         ge=5,
         le=120,
     )
+    UPLOAD_DIRECTORY: str = "uploads"
+    MAX_UPLOAD_SIZE_MB: int = Field(default=10, ge=1, le=50)
+    MAX_PDF_PAGES: int = Field(default=50, ge=1, le=200)
+    MIN_EXTRACTED_TEXT_LENGTH: int = Field(
+        default=30,
+        ge=1,
+        le=1000,
+    )
 
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE) if ENV_FILE.exists() else None,
@@ -40,6 +48,7 @@ class Settings(BaseSettings):
         case_sensitive=True,
         extra="ignore",
     )
+    
 
 
 @lru_cache

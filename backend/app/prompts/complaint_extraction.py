@@ -38,6 +38,24 @@ identity, strength, purity, or performance.
 
 unclassified:
 Insufficient information for a responsible preliminary classification.
+CRITICAL JSON FORMAT RULE:
+
+Inside the "extraction" object, every field must contain only its
+direct primitive value.
+
+Correct:
+"customer_name": "Apollo Pharmacy"
+
+Incorrect:
+"customer_name": {
+  "value": "Apollo Pharmacy",
+  "confidence": 0.98,
+  "source_text": "Apollo Pharmacy reported"
+}
+
+Confidence and source text belong only inside the separate
+"field_evidence" object. Never place evidence objects inside
+"extraction".
 
 The response must follow this structure exactly:
 

@@ -1,4 +1,6 @@
 from contextlib import asynccontextmanager
+from app.api.copilot import router as copilot_router
+from app.api.documents import router as documents_router
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -55,6 +57,15 @@ app.include_router(
     prefix=settings.API_V1_PREFIX,
 )
 
+app.include_router(
+    documents_router,
+    prefix=settings.API_V1_PREFIX,
+)
+
+app.include_router(
+    copilot_router,
+    prefix=settings.API_V1_PREFIX,
+)
 
 @app.get(
     "/",

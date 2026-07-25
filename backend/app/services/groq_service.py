@@ -99,6 +99,77 @@ def _extract_json_object(content: str) -> dict[str, Any]:
         raise AIResponseValidationError("Groq response must be a JSON object.")
 
     return parsed
+def _unwrap_extracted_values(
+    parsed_data: dict[str, Any],
+) -> dict[str, Any]:
+    """
+    Normalize AI responses when the model wraps extraction fields like:
+
+    {
+        "customer_name": {
+            "value": "Apollo Pharmacy",
+            "confidence": 0.98,
+            "source_text": "Apollo Pharmacy reported"
+        }
+    }
+
+    into the flat format expected by ComplaintExtractionData:
+
+    {
+        "customer_name": "Apollo Pharmacy"
+    }
+
+    Evidence is preserved inside field_evidence whenever possible.
+    """
+
+    extraction = parsed_data.get("extraction")
+
+    if not isinstance(extraction, dict):
+        return parsed_data
+
+    existing_evidence = parsed_data.get("field_evidence")
+
+    if not isinstance(existing_evidence, dict):
+        existing_evidence = {}
+
+    normalized_extraction: dict[str, Any] = {}
+
+    for field_name, field_value in extraction.items():
+        if (
+            isinstance(field_value, dict)
+            and "value" in field_value
+        ):
+            normalized_extraction[field_name] = field_value.get(
+                "value"
+            )
+
+            if field_name in {
+                "complaint_source",
+                "customer_name",
+                "product_name",
+                "product_strength_grade",
+                "batch_lot_number",
+                "affected_quantity",
+                "manufacturing_date",
+                "expiry_date",
+            }:
+                existing_evidence[field_name] = {
+                    "value": field_value.get("value"),
+                    "confidence": field_value.get(
+                        "confidence",
+                        0,
+                    ),
+                    "source_text": field_value.get(
+                        "source_text"
+                    ),
+                }
+        else:
+            normalized_extraction[field_name] = field_value
+
+    parsed_data["extraction"] = normalized_extraction
+    parsed_data["field_evidence"] = existing_evidence
+
+    return parsed_data
 
 
 def _is_model_unavailable_error(exc: APIStatusError) -> bool:
@@ -227,6 +298,9 @@ def analyze_complaint_text(
         raise AIResponseValidationError("Groq returned an empty response.")
 
     parsed_data = _extract_json_object(content)
+    parsed_data = _unwrap_extracted_values(
+    parsed_data
+    )
 
     try:
         analysis = ComplaintAnalysisResult.model_validate(parsed_data)

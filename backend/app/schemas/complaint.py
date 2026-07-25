@@ -210,3 +210,6 @@ class ComplaintListResponse(BaseModel):
 class ComplaintDeleteResponse(BaseModel):
     message: str
     complaint_number: str
+
+class ComplaintManualSaveRequest(ComplaintUpdate):
+    pass
