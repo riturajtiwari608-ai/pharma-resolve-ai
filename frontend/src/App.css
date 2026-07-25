@@ -182,3 +182,23 @@
     border-right-color: var(--border);
   }
 }
+.complaint-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.complaint-fieldset:disabled input,
+.complaint-fieldset:disabled textarea {
+  color: #606963;
+  background: #f0f3f1;
+  cursor: not-allowed;
+}
+.form-section-readonly {
+  opacity: 0.7;
+  pointer-events: none;
+  background: rgba(240, 243, 241, 0.5);
+  border-radius: 6px;
+  padding: 16px;
+}

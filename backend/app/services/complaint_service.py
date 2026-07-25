@@ -1,5 +1,6 @@
 import enum
 from datetime import datetime
+from uuid import UUID
 import typing
 
 
@@ -20,6 +21,7 @@ from app.models.complaint import (
     ComplaintStatus,
     SeverityLevel,
 )
+
 
 def generate_complaint_number(db: Session) -> str:
     """
@@ -76,9 +78,7 @@ def get_complaint_by_number(
     db: Session,
     complaint_number: str,
 ) -> Complaint:
-    statement = select(Complaint).where(
-        Complaint.complaint_number == complaint_number
-    )
+    statement = select(Complaint).where(Complaint.complaint_number == complaint_number)
 
     complaint = db.scalar(statement)
 
@@ -144,6 +144,8 @@ def delete_complaint(
     db.commit()
 
     return complaint
+
+
 def create_ai_extracted_draft(
     db: Session,
     raw_complaint_text: str,
@@ -168,19 +170,13 @@ def create_ai_extracted_draft(
         manufacturing_date=extracted.manufacturing_date,
         expiry_date=extracted.expiry_date,
         originating_site_block=extracted.originating_site_block,
-        impacted_non_product_material=(
-            extracted.impacted_non_product_material
-        ),
+        impacted_non_product_material=(extracted.impacted_non_product_material),
         complaint_category=extracted.complaint_category,
-        structured_defect_summary=(
-            extracted.structured_defect_summary
-        ),
+        structured_defect_summary=(extracted.structured_defect_summary),
         raw_complaint_text=raw_complaint_text,
         suggested_severity=extracted.suggested_severity,
         suggested_next_action=extracted.suggested_next_action,
-        initial_risk_assessment=(
-            extracted.initial_risk_assessment
-        ),
+        initial_risk_assessment=(extracted.initial_risk_assessment),
         ai_confidence_score=extracted.overall_confidence,
         is_ai_generated=True,
         status=(
@@ -195,6 +191,7 @@ def create_ai_extracted_draft(
         complaint_data=complaint_data,
     )
 
+
 def complaint_to_dict(
     complaint: Complaint,
 ) -> dict:
@@ -208,51 +205,33 @@ def complaint_to_dict(
         "complaint_source": complaint.complaint_source,
         "customer_name": complaint.customer_name,
         "product_name": complaint.product_name,
-        "product_strength_grade": (
-            complaint.product_strength_grade
-        ),
+        "product_strength_grade": (complaint.product_strength_grade),
         "batch_lot_number": complaint.batch_lot_number,
         "affected_quantity": complaint.affected_quantity,
-        "affected_quantity_unit": (
-            complaint.affected_quantity_unit
-        ),
+        "affected_quantity_unit": (complaint.affected_quantity_unit),
         "manufacturing_date": (
             complaint.manufacturing_date.isoformat()
             if complaint.manufacturing_date
             else None
         ),
         "expiry_date": (
-            complaint.expiry_date.isoformat()
-            if complaint.expiry_date
-            else None
+            complaint.expiry_date.isoformat() if complaint.expiry_date else None
         ),
-        "originating_site_block": (
-            complaint.originating_site_block
-        ),
-        "impacted_non_product_material": (
-            complaint.impacted_non_product_material
-        ),
+        "originating_site_block": (complaint.originating_site_block),
+        "impacted_non_product_material": (complaint.impacted_non_product_material),
         "complaint_category": complaint.complaint_category,
-        "structured_defect_summary": (
-            complaint.structured_defect_summary
-        ),
+        "structured_defect_summary": (complaint.structured_defect_summary),
         "suggested_severity": (
-            complaint.suggested_severity.value
-            if complaint.suggested_severity
-            else None
+            complaint.suggested_severity.value if complaint.suggested_severity else None
         ),
-        "suggested_next_action": (
-            complaint.suggested_next_action
-        ),
-        "initial_risk_assessment": (
-            complaint.initial_risk_assessment
-        ),
-        "ai_confidence_score": (
-            complaint.ai_confidence_score
-        ),
+        "suggested_next_action": (complaint.suggested_next_action),
+        "initial_risk_assessment": (complaint.initial_risk_assessment),
+        "ai_confidence_score": (complaint.ai_confidence_score),
         "status": complaint.status.value,
         "correction_count": complaint.correction_count,
     }
+
+
 def apply_complaint_corrections(
     db: Session,
     complaint: Complaint,
@@ -296,21 +275,11 @@ def apply_complaint_corrections(
         if isinstance(previous_value, date):
             previous_value = previous_value.isoformat()
 
-        if (
-            field_name in date_fields
-            and isinstance(field_value, str)
-        ):
-            field_value = date.fromisoformat(
-                field_value
-            )
+        if field_name in date_fields and isinstance(field_value, str):
+            field_value = date.fromisoformat(field_value)
 
-        if (
-            field_name == "suggested_severity"
-            and isinstance(field_value, str)
-        ):
-            field_value = SeverityLevel(
-                field_value
-            )
+        if field_name == "suggested_severity" and isinstance(field_value, str):
+            field_value = SeverityLevel(field_value)
 
         previous_values[field_name] = previous_value
 
@@ -334,9 +303,7 @@ def apply_complaint_corrections(
         return complaint
 
     complaint.correction_count += 1
-    complaint.status = recalculate_complaint_status(
-        complaint
-    )
+    complaint.status = recalculate_complaint_status(complaint)
 
     db.add(complaint)
     db.commit()
@@ -352,6 +319,7 @@ def apply_complaint_corrections(
     )
 
     return complaint
+
 
 def get_missing_commit_fields(
     complaint: Complaint,
@@ -388,9 +356,7 @@ def recalculate_complaint_status(
     if complaint.status == ComplaintStatus.COMMITTED:
         return ComplaintStatus.COMMITTED
 
-    missing_fields = get_missing_commit_fields(
-        complaint
-    )
+    missing_fields = get_missing_commit_fields(complaint)
 
     if missing_fields:
         return ComplaintStatus.PENDING_TRIAGE

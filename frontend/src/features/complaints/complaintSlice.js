@@ -5,6 +5,8 @@ import {
 
 import {
   commitComplaint,
+  getCorrectionHistory,
+  saveManualComplaint,
   sendCopilotMessage,
   uploadComplaintPdf,
 } from "./complaintApi";
@@ -99,6 +101,46 @@ export const commitCurrentComplaint = createAsyncThunk(
     }
   },
 );
+export const saveCurrentComplaint =
+  createAsyncThunk(
+    "complaints/saveCurrentComplaint",
+    async (
+      {
+        complaintId,
+        complaintData,
+      },
+      { rejectWithValue },
+    ) => {
+      try {
+        return await saveManualComplaint({
+          complaintId,
+          complaintData,
+        });
+      } catch (error) {
+        return rejectWithValue(
+          error.message,
+        );
+      }
+    },
+  );
+  export const loadCorrectionHistory =
+  createAsyncThunk(
+    "complaints/loadCorrectionHistory",
+    async (
+      complaintId,
+      { rejectWithValue },
+    ) => {
+      try {
+        return await getCorrectionHistory(
+          complaintId,
+        );
+      } catch (error) {
+        return rejectWithValue(
+          error.message,
+        );
+      }
+    },
+  );
 
 const complaintSlice = createSlice({
   name: "complaints",
@@ -125,6 +167,10 @@ const complaintSlice = createSlice({
 
     usedModel: null,
     fallbackUsed: false,
+
+    isDirty: false,
+    isSaving: false,
+    correctionHistory: [],
   },
 
   reducers: {
@@ -132,6 +178,7 @@ const complaintSlice = createSlice({
       const { field, value } = action.payload;
 
       state.complaintData[field] = value;
+      state.isDirty = true;
     },
 
     addUserMessage(state, action) {
@@ -168,6 +215,10 @@ const complaintSlice = createSlice({
 
       state.usedModel = null;
       state.fallbackUsed = false;
+
+      state.isDirty = false;
+      state.isSaving = false;
+      state.correctionHistory = [];
     },
   },
 
@@ -236,6 +287,8 @@ const complaintSlice = createSlice({
             state.complaintData.status =
               response.processing_status;
           }
+
+          state.isDirty = false;
 
           state.messages.push(
             createMessage(
@@ -327,6 +380,8 @@ const complaintSlice = createSlice({
             };
           }
 
+          state.isDirty = false;
+
           state.messages.push(
             createMessage(
               "assistant",
@@ -382,6 +437,7 @@ const complaintSlice = createSlice({
         commitCurrentComplaint.fulfilled,
         (state, action) => {
           state.isCommitting = false;
+          state.isDirty = false;
 
           state.complaintData = {
             ...state.complaintData,
@@ -414,9 +470,71 @@ const complaintSlice = createSlice({
             action.payload ||
             "Unable to commit complaint.";
         },
+      )
+
+      .addCase(
+        saveCurrentComplaint.pending,
+        (state) => {
+          state.isSaving = true;
+          state.error = null;
+        },
+      )
+
+      .addCase(
+        saveCurrentComplaint.fulfilled,
+        (state, action) => {
+          state.isSaving = false;
+          state.isDirty = false;
+
+          state.complaintData = {
+            ...state.complaintData,
+            ...action.payload,
+            status:
+              action.payload.status ||
+              state.complaintData.status,
+            };
+
+            state.messages.push(
+              createMessage(
+                "assistant",
+                "Manual form changes were saved successfully.",
+                {
+                  status: "saved",
+                },
+              ),
+            );
+          },
+          )
+
+      .addCase(
+        saveCurrentComplaint.rejected,
+        (state, action) => {
+          state.isSaving = false;
+
+          state.error =
+            action.payload ||
+            "Unable to save form changes.";
+        },
+      )
+
+      .addCase(
+        loadCorrectionHistory.fulfilled,
+        (state, action) => {
+          state.correctionHistory =
+            action.payload.corrections || [];
+          },
+        )
+      .addCase(
+        loadCorrectionHistory.rejected,
+        (state, action) => {
+          state.error =
+            action.payload ||
+            "Unable to load correction history.";
+        },
       );
-  },
+    }
 });
+
 
 export const {
   addUserMessage,

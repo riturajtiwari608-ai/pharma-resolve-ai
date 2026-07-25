@@ -1,16 +1,16 @@
 from contextlib import asynccontextmanager
-from app.api.copilot import router as copilot_router
-from app.api.documents import router as documents_router
+from .api.copilot import router as copilot_router
+from .api.documents import router as documents_router
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 import app.models
-from app.api.ai_intake import router as ai_intake_router
-from app.api.complaints import router as complaints_router
-from app.core.config import settings
-from app.core.database import Base, SessionLocal, engine
+from .api.ai_intake import router as ai_intake_router
+from .api.complaints import router as complaints_router
+from .core.config import settings
+from .core.database import Base, SessionLocal, engine
 
 
 @asynccontextmanager
@@ -66,6 +66,7 @@ app.include_router(
     copilot_router,
     prefix=settings.API_V1_PREFIX,
 )
+
 
 @app.get(
     "/",

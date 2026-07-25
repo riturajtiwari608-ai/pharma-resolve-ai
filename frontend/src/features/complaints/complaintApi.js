@@ -62,12 +62,32 @@ export async function uploadComplaintPdf({
   return response.data;
 }
 
-export async function commitComplaint(complaintId) {
+export async function commitComplaint(
+  complaintId,
+) {
+  const response = await apiClient.post(
+    `/complaints/${complaintId}/commit`,
+  );
+
+  return response.data;
+}
+export async function saveManualComplaint({
+  complaintId,
+  complaintData,
+}) {
   const response = await apiClient.patch(
-    `/complaints/${complaintId}`,
-    {
-      status: "committed",
-    },
+    `/complaints/${complaintId}/manual-save`,
+    complaintData,
+  );
+
+  return response.data;
+}
+
+export async function getCorrectionHistory(
+  complaintId,
+) {
+  const response = await apiClient.get(
+    `/complaints/${complaintId}/corrections`,
   );
 
   return response.data;

@@ -3,18 +3,24 @@ import {
   FlaskConical,
   PackageSearch,
   Save,
+  Upload,
   UserRound,
 } from "lucide-react";
 
 import { useDispatch, useSelector } from "react-redux";
+import { useState } from "react";
 
 import {
   commitCurrentComplaint,
+  saveCurrentComplaint,
   updateFormField,
 } from "../features/complaints/complaintSlice";
 
 import RiskAssessmentCard from "./RiskAssessmentCard";
+import CommitConfirmationModal from "./CommitConfirmationModal";
 import StatusBadge from "./StatusBadge";
+
+
 
 function Field({
   label,
@@ -23,6 +29,7 @@ function Field({
   onChange,
   type = "text",
   placeholder = "",
+  disabled = false,
 }) {
   return (
     <label className="form-field">
@@ -31,6 +38,7 @@ function Field({
       <input
         type={type}
         name={name}
+        disabled={disabled}
         value={value ?? ""}
         placeholder={placeholder}
         onChange={(event) =>
@@ -47,6 +55,7 @@ function TextAreaField({
   value,
   onChange,
   placeholder = "",
+  disabled = false,
 }) {
   return (
     <label className="form-field form-field-full">
@@ -56,6 +65,7 @@ function TextAreaField({
         name={name}
         value={value ?? ""}
         placeholder={placeholder}
+        disabled={disabled}
         rows={5}
         onChange={(event) =>
           onChange(name, event.target.value)
@@ -67,15 +77,20 @@ function TextAreaField({
 
 export default function ComplaintForm() {
   const dispatch = useDispatch();
+  const [showCommitModal, setShowCommitModal] = useState(false);
 
   const {
     complaintData,
     complaintId,
     complaintNumber,
     isCommitting,
+    isDirty,
+    isSaving,
   } = useSelector(
     (state) => state.complaints,
   );
+  const isReadOnly =
+  complaintData.status === "committed";
 
   function handleFieldChange(field, value) {
     dispatch(
@@ -86,19 +101,59 @@ export default function ComplaintForm() {
     );
   }
 
-  function handleCommit() {
-    if (!complaintId) {
+  function handleCommitRequest() {
+  if (!complaintId) {
+    return;
+  }
+
+  setShowCommitModal(true);
+}
+
+  function confirmCommit() {
+   dispatch(
+    commitCurrentComplaint(
+      complaintId,
+    ),
+  ).then((result) => {
+    if (!result.error) {
+      setShowCommitModal(false);
+    }
+  });
+}
+
+  function handleManualSave() {
+    if (!complaintId || !isDirty) {
       return;
     }
 
     dispatch(
-      commitCurrentComplaint(complaintId),
+      saveCurrentComplaint({
+        complaintId,
+        complaintData,
+      }),
     );
   }
 
-  const canCommit =
-    Boolean(complaintId) &&
-    complaintData.status !== "committed";
+  const requiredFieldsComplete =
+  Boolean(complaintData.customer_name) &&
+  Boolean(complaintData.product_name) &&
+  Boolean(complaintData.batch_lot_number) &&
+  Boolean(complaintData.complaint_category) &&
+  Boolean(complaintData.structured_defect_summary) &&
+  Boolean(complaintData.suggested_next_action) &&
+  Boolean(complaintData.initial_risk_assessment) &&
+  complaintData.suggested_severity !== "unclassified";
+
+const canCommit =
+  Boolean(complaintId) &&
+  requiredFieldsComplete &&
+  complaintData.status !== "committed";
+
+  {complaintId && !requiredFieldsComplete && (
+  <span className="validation-warning">
+    Complete the required complaint and AI assessment fields before committing.
+  </span>
+)}
 
   return (
     <section className="complaint-section">
@@ -130,7 +185,7 @@ export default function ComplaintForm() {
       </header>
 
       <div className="form-scroll-area">
-        <section className="form-section">
+        <section className={`form-section ${isReadOnly ? 'form-section-readonly' : ''}`}>
           <div className="form-section-heading">
             <UserRound size={19} />
 
@@ -151,6 +206,7 @@ export default function ComplaintForm() {
                 complaintData.complaint_source
               }
               onChange={handleFieldChange}
+              disabled={isReadOnly}
               placeholder="Email, pharmacy, phone..."
             />
 
@@ -159,12 +215,13 @@ export default function ComplaintForm() {
               name="customer_name"
               value={complaintData.customer_name}
               onChange={handleFieldChange}
+              disabled={isReadOnly}
               placeholder="Customer or company name"
             />
           </div>
         </section>
 
-        <section className="form-section">
+        <section className={`form-section ${isReadOnly ? 'form-section-readonly' : ''}`}>
           <div className="form-section-heading">
             <PackageSearch size={19} />
 
@@ -185,6 +242,7 @@ export default function ComplaintForm() {
               name="product_name"
               value={complaintData.product_name}
               onChange={handleFieldChange}
+              disabled={isReadOnly}
               placeholder="Product name"
             />
 
@@ -195,6 +253,7 @@ export default function ComplaintForm() {
                 complaintData.product_strength_grade
               }
               onChange={handleFieldChange}
+              disabled={isReadOnly}
               placeholder="500 mg, IP/BP..."
             />
 
@@ -205,6 +264,7 @@ export default function ComplaintForm() {
                 complaintData.batch_lot_number
               }
               onChange={handleFieldChange}
+              disabled={isReadOnly}
               placeholder="Batch or lot number"
             />
 
@@ -216,6 +276,7 @@ export default function ComplaintForm() {
                   complaintData.affected_quantity
                 }
                 onChange={handleFieldChange}
+                disabled={isReadOnly}
                 type="number"
                 placeholder="0"
               />
@@ -228,6 +289,7 @@ export default function ComplaintForm() {
                     .affected_quantity_unit
                 }
                 onChange={handleFieldChange}
+                disabled={isReadOnly}
                 placeholder="capsules, kg..."
               />
             </div>
@@ -239,6 +301,7 @@ export default function ComplaintForm() {
                 complaintData.manufacturing_date
               }
               onChange={handleFieldChange}
+              disabled={isReadOnly}
               type="date"
             />
 
@@ -247,12 +310,13 @@ export default function ComplaintForm() {
               name="expiry_date"
               value={complaintData.expiry_date}
               onChange={handleFieldChange}
+              disabled={isReadOnly}
               type="date"
             />
           </div>
         </section>
 
-        <section className="form-section">
+        <section className={`form-section ${isReadOnly ? 'form-section-readonly' : ''}`}>
           <div className="form-section-heading">
             <Building2 size={19} />
 
@@ -276,6 +340,7 @@ export default function ComplaintForm() {
                   .originating_site_block
               }
               onChange={handleFieldChange}
+              disabled={isReadOnly}
               placeholder="Manufacturing Block A"
             />
 
@@ -287,12 +352,13 @@ export default function ComplaintForm() {
                   .impacted_non_product_material
               }
               onChange={handleFieldChange}
+              disabled={isReadOnly}
               placeholder="Bottle, blister, HDPE drum..."
             />
           </div>
         </section>
 
-        <section className="form-section">
+        <section className={`form-section ${isReadOnly ? 'form-section-readonly' : ''}`}>
           <div className="form-section-heading">
             <FlaskConical size={19} />
 
@@ -313,6 +379,7 @@ export default function ComplaintForm() {
                 complaintData.complaint_category
               }
               onChange={handleFieldChange}
+              disabled={isReadOnly}
               placeholder="Discoloration, contamination..."
             />
 
@@ -324,6 +391,7 @@ export default function ComplaintForm() {
                   .structured_defect_summary
               }
               onChange={handleFieldChange}
+              disabled={isReadOnly}
               placeholder="AI-generated complaint summary..."
             />
           </div>
@@ -344,21 +412,55 @@ export default function ComplaintForm() {
           </span>
         </div>
 
-        <button
-          type="button"
-          className="primary-button commit-button"
-          disabled={!canCommit || isCommitting}
-          onClick={handleCommit}
-        >
-          <Save size={18} />
+        <div className="footer-actions">
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={
+              !complaintId ||
+              !isDirty ||
+              isSaving ||
+              complaintData.status === "committed"
+            }
+            onClick={handleManualSave}
+          >
+            <Upload size={18} />
 
-          {isCommitting
-            ? "Committing..."
-            : complaintData.status === "committed"
+            {isSaving
+              ? "Saving..."
+              : isDirty
+                ? "Save Form Changes"
+                : "Changes Saved"}
+          </button>
+
+          <button
+            type="button"
+            className="primary-button commit-button"
+            disabled={
+              !canCommit ||
+              isCommitting ||
+              isDirty
+            }
+            onClick={handleCommitRequest}
+          >
+            <Save size={18} />
+
+            {complaintData.status === "committed"
               ? "Committed to QMS"
               : "Commit to QMS Ledger"}
-        </button>
+          </button>
+        </div>
       </footer>
+
+      <CommitConfirmationModal
+        open={showCommitModal}
+        complaintNumber={complaintNumber}
+        isCommitting={isCommitting}
+        onCancel={() =>
+          setShowCommitModal(false)
+        }
+        onConfirm={confirmCommit}
+      />
     </section>
   );
 }

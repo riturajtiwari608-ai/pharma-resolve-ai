@@ -23,6 +23,14 @@ from app.services.complaint_service import (
     update_complaint,
 )
 from app.models.complaint import ComplaintStatus
+from app.schemas.complaint import (
+    ComplaintResponse,
+    ComplaintManualSaveRequest,
+    ComplaintCreate,
+    ComplaintListResponse,
+    ComplaintDeleteResponse,
+    ComplaintUpdate,
+)
 from app.schemas.complaint_correction import (
     ComplaintCommitResponse,
     CorrectionHistoryListResponse,
@@ -30,11 +38,12 @@ from app.schemas.complaint_correction import (
 from app.models.complaint_correction import ComplaintCorrection
 from sqlalchemy import select
 
-
 router = APIRouter(
     prefix="/complaints",
     tags=["Complaints"],
 )
+
+
 @router.patch(
     "/{complaint_id}/manual-save",
     response_model=ComplaintResponse,
@@ -49,9 +58,7 @@ def save_manual_form_changes(
         complaint_id=complaint_id,
     )
 
-    field_updates = complaint_data.model_dump(
-        exclude_unset=True
-    )
+    field_updates = complaint_data.model_dump(exclude_unset=True)
 
     return apply_complaint_corrections(
         db=db,
@@ -60,6 +67,8 @@ def save_manual_form_changes(
         source="manual",
         user_message="Manual form update",
     )
+
+
 @router.post(
     "/{complaint_id}/commit",
     response_model=ComplaintCommitResponse,
@@ -79,9 +88,7 @@ def commit_complaint_to_qms(
             detail="Complaint is already committed.",
         )
 
-    missing_fields = get_missing_commit_fields(
-        complaint
-    )
+    missing_fields = get_missing_commit_fields(complaint)
 
     if missing_fields:
         raise HTTPException(
@@ -112,6 +119,7 @@ def commit_complaint_to_qms(
         ),
     )
 
+
 @router.patch(
     "/{complaint_id}/manual-save",
     response_model=ComplaintResponse,
@@ -126,9 +134,7 @@ def save_manual_form_changes(
         complaint_id=complaint_id,
     )
 
-    field_updates = complaint_data.model_dump(
-        exclude_unset=True
-    )
+    field_updates = complaint_data.model_dump(exclude_unset=True)
 
     return apply_complaint_corrections(
         db=db,
@@ -137,6 +143,7 @@ def save_manual_form_changes(
         source="manual",
         user_message="Manual form update",
     )
+
 
 @router.post(
     "",
