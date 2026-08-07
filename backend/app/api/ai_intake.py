@@ -21,7 +21,6 @@ from app.services.groq_service import (
     analyze_complaint_text,
 )
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -57,21 +56,11 @@ def analyze_text_complaint(
 
         return ComplaintTextAnalysisResponse(
             analysis=ai_output.analysis,
-            draft_complaint_id=(
-                str(draft_complaint.id)
-                if draft_complaint
-                else None
-            ),
+            draft_complaint_id=(str(draft_complaint.id) if draft_complaint else None),
             complaint_number=(
-                draft_complaint.complaint_number
-                if draft_complaint
-                else None
+                draft_complaint.complaint_number if draft_complaint else None
             ),
-            complaint_status=(
-                draft_complaint.status
-                if draft_complaint
-                else None
-            ),
+            complaint_status=(draft_complaint.status if draft_complaint else None),
             usage=ai_output.usage,
         )
 
@@ -100,9 +89,7 @@ def analyze_text_complaint(
         ) from exc
 
     except Exception as exc:
-        logger.exception(
-            "Unexpected complaint analysis failure."
-        )
+        logger.exception("Unexpected complaint analysis failure.")
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

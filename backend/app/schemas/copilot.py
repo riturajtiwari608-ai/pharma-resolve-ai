@@ -1,7 +1,12 @@
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+)
 
 
 class ComplaintCopilotRequest(BaseModel):
@@ -36,37 +41,60 @@ class ComplaintCopilotRequest(BaseModel):
             raise ValueError("Message is too short.")
 
         return cleaned
+    raw_intent = result.get("intent")
+
+    intent_mapping = {
+        "new": "new_complaint",
+        "new_complaint": "new_complaint",
+        "create_complaint": "new_complaint",
+        "correction": "correction",
+        "correct_complaint": "correction",
+        "complaint_correction": "correction",
+    }
+
+    safe_intent = intent_mapping.get(
+        raw_intent,
+        "unknown",
+    )
 
 
 class ComplaintCopilotResponse(BaseModel):
     success: bool
+
     intent: Literal[
         "new_complaint",
         "correction",
         "unknown",
-    ]
+    ] = "unknown"
 
     thread_id: str
 
-    complaint_id: str | None = None
+    complaint_id: str | UUID | None = None
     complaint_number: str | None = None
 
-    processing_status: str
-    assistant_message: str
+    processing_status: str = "unknown"
+    assistant_message: str = "Request processed."
 
     complaint_data: dict[str, Any] | None = None
+
     field_updates: dict[str, Any] = Field(
         default_factory=dict
     )
 
-    missing_fields: list[str] = Field(default_factory=list)
-    warnings: list[str] = Field(default_factory=list)
+    missing_fields: list[str] = Field(
+        default_factory=list
+    )
+
+    warnings: list[str] = Field(
+        default_factory=list
+    )
 
     used_model: str | None = None
     fallback_used: bool = False
 
-from datetime import date
-from pydantic import ConfigDict
+    model_config = ConfigDict(
+        extra="ignore",
+    )
 
 
 class ComplaintCorrectionResult(BaseModel):
@@ -74,8 +102,13 @@ class ComplaintCorrectionResult(BaseModel):
         default_factory=dict
     )
 
-    assistant_message: str
-    warnings: list[str] = Field(default_factory=list)
+    assistant_message: str = (
+        "Complaint correction processed."
+    )
+
+    warnings: list[str] = Field(
+        default_factory=list
+    )
 
     confidence: float = Field(
         default=0,
@@ -83,4 +116,6 @@ class ComplaintCorrectionResult(BaseModel):
         le=1,
     )
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(
+        extra="ignore",
+    )

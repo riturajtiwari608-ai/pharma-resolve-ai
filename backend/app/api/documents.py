@@ -33,7 +33,6 @@ from app.services.groq_service import (
     analyze_complaint_text,
 )
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -63,13 +62,9 @@ async def analyze_complaint_pdf(
     saved_upload = None
 
     try:
-        saved_upload = await validate_and_save_pdf(
-            upload_file=file
-        )
+        saved_upload = await validate_and_save_pdf(upload_file=file)
 
-        extraction = extract_text_from_pdf(
-            saved_upload.file_path
-        )
+        extraction = extract_text_from_pdf(saved_upload.file_path)
 
         document_record = create_document_record(
             db=db,
@@ -88,9 +83,7 @@ async def analyze_complaint_pdf(
                 success=False,
                 document=document_record,
                 text_preview=extraction.text[:1000],
-                extracted_character_count=(
-                    extraction.character_count
-                ),
+                extracted_character_count=(extraction.character_count),
                 analysis=None,
                 assistant_message=(
                     "The PDF was uploaded, but insufficient "
@@ -100,9 +93,7 @@ async def analyze_complaint_pdf(
                 warnings=warnings,
             )
 
-        ai_output = analyze_complaint_text(
-            complaint_text=extraction.text
-        )
+        ai_output = analyze_complaint_text(complaint_text=extraction.text)
 
         draft_complaint = None
 
@@ -128,44 +119,26 @@ async def analyze_complaint_pdf(
             success=True,
             document=document_record,
             text_preview=extraction.text[:1500],
-            extracted_character_count=(
-                extraction.character_count
-            ),
-            analysis=ai_output.analysis.model_dump(
-                mode="json"
-            ),
-            complaint_id=(
-                str(draft_complaint.id)
-                if draft_complaint
-                else None
-            ),
+            extracted_character_count=(extraction.character_count),
+            analysis=ai_output.analysis.model_dump(mode="json"),
+            complaint_id=(str(draft_complaint.id) if draft_complaint else None),
             complaint_number=(
-                draft_complaint.complaint_number
-                if draft_complaint
-                else None
+                draft_complaint.complaint_number if draft_complaint else None
             ),
             complaint_status=(
-                draft_complaint.status.value
-                if draft_complaint
-                else None
+                draft_complaint.status.value if draft_complaint else None
             ),
-            assistant_message=(
-                ai_output.analysis.assistant_message
-            ),
+            assistant_message=(ai_output.analysis.assistant_message),
             warnings=all_warnings,
             used_model=ai_output.usage.used_model,
-            fallback_used=(
-                ai_output.usage.fallback_used
-            ),
+            fallback_used=(ai_output.usage.fallback_used),
         )
 
     except HTTPException:
         raise
 
     except AIResponseValidationError as exc:
-        logger.exception(
-            "PDF AI response validation failed."
-        )
+        logger.exception("PDF AI response validation failed.")
 
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -179,9 +152,7 @@ async def analyze_complaint_pdf(
         ) from exc
 
     except Exception as exc:
-        logger.exception(
-            "Unexpected PDF complaint processing error."
-        )
+        logger.exception("Unexpected PDF complaint processing error.")
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
