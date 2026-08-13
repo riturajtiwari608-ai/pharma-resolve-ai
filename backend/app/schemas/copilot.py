@@ -41,21 +41,6 @@ class ComplaintCopilotRequest(BaseModel):
             raise ValueError("Message is too short.")
 
         return cleaned
-    raw_intent = result.get("intent")
-
-    intent_mapping = {
-        "new": "new_complaint",
-        "new_complaint": "new_complaint",
-        "create_complaint": "new_complaint",
-        "correction": "correction",
-        "correct_complaint": "correction",
-        "complaint_correction": "correction",
-    }
-
-    safe_intent = intent_mapping.get(
-        raw_intent,
-        "unknown",
-    )
 
 
 class ComplaintCopilotResponse(BaseModel):
@@ -77,17 +62,11 @@ class ComplaintCopilotResponse(BaseModel):
 
     complaint_data: dict[str, Any] | None = None
 
-    field_updates: dict[str, Any] = Field(
-        default_factory=dict
-    )
+    field_updates: dict[str, Any] = Field(default_factory=dict)
 
-    missing_fields: list[str] = Field(
-        default_factory=list
-    )
+    missing_fields: list[str] = Field(default_factory=list)
 
-    warnings: list[str] = Field(
-        default_factory=list
-    )
+    warnings: list[str] = Field(default_factory=list)
 
     used_model: str | None = None
     fallback_used: bool = False
@@ -98,17 +77,11 @@ class ComplaintCopilotResponse(BaseModel):
 
 
 class ComplaintCorrectionResult(BaseModel):
-    field_updates: dict[str, Any] = Field(
-        default_factory=dict
-    )
+    field_updates: dict[str, Any] = Field(default_factory=dict)
 
-    assistant_message: str = (
-        "Complaint correction processed."
-    )
+    assistant_message: str = "Complaint correction processed."
 
-    warnings: list[str] = Field(
-        default_factory=list
-    )
+    warnings: list[str] = Field(default_factory=list)
 
     confidence: float = Field(
         default=0,
