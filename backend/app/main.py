@@ -2,8 +2,9 @@ from contextlib import asynccontextmanager
 from app.api.copilot import router as copilot_router
 from app.api.documents import router as documents_router
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 import app.models
@@ -35,18 +36,6 @@ app = FastAPI(
 )
 
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
 app.include_router(
     ai_intake_router,
     prefix=settings.API_V1_PREFIX,
@@ -66,6 +55,22 @@ app.include_router(
     copilot_router,
     prefix=settings.API_V1_PREFIX,
 )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(
+    request: Request,
+    exc: Exception,
+) -> JSONResponse:
+    """Return a JSON error so API clients never receive an opaque failure."""
+    detail = "An unexpected server error occurred."
+    if settings.DEBUG:
+        detail = f"{type(exc).__name__}: {exc}"
+
+    return JSONResponse(
+        status_code=500,
+        content={"detail": detail},
+    )
 
 
 @app.get(
@@ -102,3 +107,17 @@ def health_check():
         "database": database_status,
         "version": settings.APP_VERSION,
     }
+
+
+# Keep CORS outside FastAPI's error middleware so even unexpected server
+# errors include the CORS headers required by the browser.
+app = CORSMiddleware(
+    app=app,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)

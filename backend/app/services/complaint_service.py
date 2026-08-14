@@ -23,6 +23,19 @@ from app.models.complaint import (
 )
 
 
+# These fields define the minimum QA review required before a complaint can
+# be entered into the QMS ledger. Keep this in sync with the form validation.
+REQUIRED_COMMIT_FIELDS = {
+    "customer_name": "Customer name",
+    "product_name": "Product name",
+    "batch_lot_number": "Batch / lot number",
+    "complaint_category": "Complaint category",
+    "structured_defect_summary": "Defect summary",
+    "suggested_next_action": "Suggested next action",
+    "initial_risk_assessment": "Initial risk assessment",
+}
+
+
 def generate_complaint_number(db: Session) -> str:
     """
     Generate a complaint number such as:

@@ -1,6 +1,7 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -12,14 +13,6 @@ from app.services.complaint_service import (
     get_complaint_by_number,
     get_complaints,
     get_missing_commit_fields,
-    update_complaint,
-)
-from app.services.complaint_service import (
-    create_complaint,
-    delete_complaint,
-    get_complaint_by_id,
-    get_complaint_by_number,
-    get_complaints,
     update_complaint,
 )
 from app.models.complaint import ComplaintStatus
@@ -102,11 +95,17 @@ def commit_complaint_to_qms(
             },
         )
 
-    complaint.status = ComplaintStatus.COMMITTED
-
-    db.add(complaint)
-    db.commit()
-    db.refresh(complaint)
+    try:
+        complaint.status = ComplaintStatus.COMMITTED
+        db.add(complaint)
+        db.commit()
+        db.refresh(complaint)
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="The QMS ledger is temporarily unavailable. Please try again.",
+        ) from exc
 
     return ComplaintCommitResponse(
         success=True,
@@ -117,31 +116,6 @@ def commit_complaint_to_qms(
             f"Complaint {complaint.complaint_number} "
             "was committed to the QMS ledger."
         ),
-    )
-
-
-@router.patch(
-    "/{complaint_id}/manual-save",
-    response_model=ComplaintResponse,
-)
-def save_manual_form_changes(
-    complaint_id: UUID,
-    complaint_data: ComplaintManualSaveRequest,
-    db: Session = Depends(get_db),
-):
-    complaint = get_complaint_by_id(
-        db=db,
-        complaint_id=complaint_id,
-    )
-
-    field_updates = complaint_data.model_dump(exclude_unset=True)
-
-    return apply_complaint_corrections(
-        db=db,
-        complaint=complaint,
-        field_updates=field_updates,
-        source="manual",
-        user_message="Manual form update",
     )
 
 
