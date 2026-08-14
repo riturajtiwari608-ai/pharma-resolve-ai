@@ -4,7 +4,9 @@ services:
     env: python
     rootDir: backend
     buildCommand: |
-      python -m pip install --upgrade pip
+      python --version
+      python -m pip --version
+      python -m pip install --upgrade pip setuptools wheel
       python -m pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     plan: free
