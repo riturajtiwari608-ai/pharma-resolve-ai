@@ -17,6 +17,16 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str
     API_V1_PREFIX: str = "/api/v1"
+    # Comma-separated browser origins permitted to call the API. Keep this
+    # configurable because Vercel production and preview URLs can differ.
+    CORS_ORIGINS: str = (
+        "http://localhost:5173,"
+        "http://127.0.0.1:5173,"
+        "https://pharma-resolve-ai.vercel.app"
+    )
+    CORS_ORIGIN_REGEX: str | None = (
+        r"https://pharma-resolve-ai(?:-[a-z0-9-]+)?\.vercel\.app"
+    )
 
     GROQ_API_KEY: SecretStr | None = None
     GROQ_MODEL: str = "gemma2-9b-it"
